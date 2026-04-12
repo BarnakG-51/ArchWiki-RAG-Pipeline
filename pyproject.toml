@@ -1,0 +1,11 @@
+[project]
+name = "mega-pipeline"
+version = "0.1.0"
+description = "An end-to-end RAG pipeline which inputs data, processes and trains it into an agent."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.5.7",
+    "llama-index>=0.14.20",
+    "llama-index-vector-stores-chroma>=0.5.5",
+]
