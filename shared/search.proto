@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+service SearchService{
+    //Takes search input from the user and returns list of text chunks
+    rpc Search (SearchRequest) returns (SearchResponse);
+}
+
+message SearchRequest{
+    string query = 1;
+    int32 top_k = 2;
+}
+
+message SearchResponse{
+    repeated string results = 1;
+}
