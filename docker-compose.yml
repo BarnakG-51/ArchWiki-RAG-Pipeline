@@ -1,13 +1,47 @@
-version: '3.8'
 services:
+  search:
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile
+    ports: ["50051:50051"]
+    volumes:
+      - chromadb_data:/app/chromadb
+
+  brain:
+    build:
+      context: .
+      dockerfile: services/brain/Dockerfile
+    depends_on:
+      - search
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SEARCH_SERVICE_URL1=search:50051
+    env_file:
+      - .env
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URI=redis://redis:6379
+    env_file:
+      - .env
+    volumes:
+      - ingestion_data:/app/data
+
   mongodb:
-    image: mongo:latest
-    ports: ["27017:27017"]
-    volumes: ["mongo_data:/data/db"]
+     image: mongo:latest
+     ports: ["27017:27017"]
+     volumes: ["mongo_data:/data/db"]
 
   redis:
     image: redis/redis-stack:latest # Includes Vector Search capabilities
-    ports: ["6379:6379", "8001:8001"] 
+    ports: ["6380:6379", "8001:8001"]
 
-  volumes:
-    mongo_data:
+volumes:
+  mongo_data:
+  chromadb_data:
+  ingestion_data:
