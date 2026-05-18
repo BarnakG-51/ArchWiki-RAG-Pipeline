@@ -21,7 +21,8 @@ import shared.search_pb2_grpc as pb2_grpc
 
 class searchServicer:
     def __init__(self):
-        self.db = chromadb.PersistentClient(path="./chromadb")
+        chroma_path = os.getenv("APP_DATA", "./chromadb")
+        self.db = chromadb.PersistentClient(path=chroma_path)
         self.chromaCollection = self.db.get_collection("arch-wiki")
         self.vectorStore = ChromaVectorStore(chroma_collection=self.chromaCollection)
         self.index = VectorStoreIndex.from_vector_store(self.vectorStore)
