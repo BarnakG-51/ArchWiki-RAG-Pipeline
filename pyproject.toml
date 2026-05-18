@@ -12,10 +12,15 @@ dependencies = [
     "chromadb>=1.5.7",
     "llama-index>=0.14.20",
     "llama-index-vector-stores-chroma>=0.5.5",
+    "llama-index-vector-stores-redis>=0.1.0",
     "llama-index-embeddings-huggingface>=0.3.0",
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
     "grpcio>=1.60.0",
+    "groq>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "redis>=5.0.1,<6.0.0",
+    "torch>=2.0.0; sys_platform == 'linux'",
 ]
 
 [tool.setuptools]

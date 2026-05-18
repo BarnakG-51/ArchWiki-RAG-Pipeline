@@ -1,36 +1,73 @@
-from llama_index.llms.openai_like import OpenAILike
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-import chromadb
+import grpc
+import os
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+import redis
+from redisvl.extensions.llmcache import SemanticCache
+
+# Add project root to Python path so we can import shared modules
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Load environment variables from .env file
+load_dotenv(project_root / ".env")
+
+#Initialise cache
+cache = SemanticCache(
+    name="arch_wiki_cache",
+    redis_url="redis://localhost:6379",
+    threshold=0.9 # Only return hits with 90%+ similarity
+)
+
+from groq import Groq
+import shared.search_pb2 as pb2
+import shared.search_pb2_grpc as pb2_grpc
+
+# Initialize Groq client with API key from .env
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 class BrainService:
     def __init__(self):
-        # 1. Connect to local vLLM instance
-        # We treat vLLM as an OpenAI-compatible server
-        self.llm = OpenAILike(
-            api_base="http://llm-engine:8000/v1",
-            api_key="fake-key",
-            model="meta-llama/Meta-Llama-3-8B-Instruct",
-            is_chat_model=True,
-            timeout=60.0
+        self.channel = grpc.insecure_channel('localhost:50051')
+        self.search_stub = pb2_grpc.SearchServiceStub(self.channel)
+
+    def ask_question(self, question: str):
+        request = pb2.SearchRequest(query=question, top_k=10)
+        search_results = self.search_stub.Search(request)
+        context = "\n---\n".join(search_results.results)
+
+        prompt = f"""
+        You are an Arch Linux expert. Use the following wiki context to answer the user.
+        If the answer is not in the context, say you don't know.
+
+        CONTEXT:
+        {context}
+
+        USER QUESTION: {question}
+        """
+
+        message = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Fast and capable Groq model
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
         )
-        
-        # 2. Embeddings remain local for lower latency
-        self.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-        
-        # 3. ChromaDB for Semantic Caching
-        self.db = chromadb.PersistentClient(path="./chroma_db")
-        self.cache_collection = self.db.get_or_create_collection("semantic_cache")
-
-    def process_query(self, user_query: str, context_chunks: list):
-        # Check Semantic Cache first (as implemented in previous step)
-        # ... 
-
-        # Construct the RAG prompt
-        context_str = "\n".join(context_chunks)
-        prompt = f"Arch Wiki Context:\n{context_str}\n\nUser Question: {user_query}"
-        
-        # vLLM handles the heavy lifting here
-        response = self.llm.complete(prompt)
-        
-        # Update Cache and return
-        return str(response)
+        return message.choices[0].message.content
+    
+def get_answer(query):
+    brain = BrainService()
+    # 1. Check cache first
+    cached_response = cache.check(query)
+    if cached_response:
+        return cached_response
+    
+    # 2. If no hit, call your existing RAG logic
+    response = brain.ask_question(query)
+    
+    # 3. Store the new answer
+    cache.store(query, response)
+    return response
+    
+if __name__ == "__main__":
+    print("\033[33mBrain is thinking...\033[0m")
+    print(get_answer("How do I install Hyprland?"))

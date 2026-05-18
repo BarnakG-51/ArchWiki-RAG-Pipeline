@@ -2,27 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PyTorch CPU version first (before other dependencies)
-RUN pip install --no-cache-dir --index-url "https://download.pytorch.org/whl/cpu" "torch>=2.5,<2.6"
-
 # Copy project files
-COPY pyproject.toml ./
-COPY shared ./shared
-COPY services/search ./services/search
+COPY . /app
 
 # Install dependencies
 RUN pip install --no-cache-dir -e .
 
-# Set working directory to search service
-WORKDIR /app/services/search
+# Create chromadb directory for persistence
+RUN mkdir -p chromadb
 
-# Expose port for gRPC server
+# Expose gRPC port
 EXPOSE 50051
 
 # Run the search service
-CMD ["python", "main.py"]
+CMD ["python", "services/search/main.py"]
+

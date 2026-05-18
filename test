@@ -1,0 +1,28 @@
+import traceback
+import llama_index
+print("llama_index:", getattr(llama_index, "__version__", "unknown"))
+
+try:
+    from llama_index.vector_stores.redis.base import IndexSchema
+    print("IndexSchema object:", IndexSchema)
+    try:
+        s = IndexSchema(
+            name="archwiki_index",
+            text_field="content",
+            embedding_field="embedding",
+            vector_dim=1536,
+            distance_metric="COSINE"
+        )
+        print("IndexSchema instantiated:", s)
+        print("model_dump:", getattr(s, "model_dump", lambda: None)())
+    except Exception:
+        traceback.print_exc()
+except Exception:
+    traceback.print_exc()
+
+# Run the script to reproduce the error and capture full traceback
+try:
+    import runpy
+    runpy.run_path("services/ingestion/main.py", run_name="__main__")
+except Exception:
+    traceback.print_exc()

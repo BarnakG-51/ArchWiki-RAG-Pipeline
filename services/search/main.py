@@ -6,9 +6,12 @@ from llama_index.core import VectorStoreIndex, Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.llms import MockLLM
 import sys
-import os
+from pathlib import Path
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Add project root to Python path so we can import shared modules
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 Settings.llm = MockLLM()
 
@@ -40,6 +43,7 @@ def serve():
     pb2_grpc.add_SearchServiceServicer_to_server(searchServicer(), server)
     server.add_insecure_port('[::]:50051')
     print("\033[32mSearch Service started at port 50051\033[0m")
+    
     server.start()
     server.wait_for_termination()
 
