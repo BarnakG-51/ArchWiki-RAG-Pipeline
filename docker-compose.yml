@@ -1,13 +1,80 @@
-version: '3.8'
+networks:
+  rag-network:
+    driver: bridge
+
 services:
-  mongodb:
-    image: mongo:latest
-    ports: ["27017:27017"]
-    volumes: ["mongo_data:/data/db"]
+  
+  # llm-engine:
+  #   image: vllm/vllm-openai:latest
+  #   command: >
+  #     --model meta-llama/Meta-Llama-3-8B-Instruct
+  #     --quantization bitsandbytes
+  #     --load-format bitsandbytes
+  #     --max-model-len 4096
+  #     --enforce-eager
+  #   ports:
+  #     - "8000:8000"
+  #   shm_size: '4gb'
+  #   networks:
+  #     - rag-network
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
 
-  redis:
-    image: redis/redis-stack:latest # Includes Vector Search capabilities
-    ports: ["6379:6379", "8001:8001"] 
+  # brain:
+  #   build:
+  #     context: .
+  #     dockerfile: services/brain/Dockerfile
+  #   environment:
+  #     - LLM_API_URL=http://llm-engine:8000/v1
+  #     - SEARCH_SERVICE_HOST=search
+  #     - SEARCH_SERVICE_PORT=50051
+  #   depends_on:
+  #     - llm-engine
+  #     - search
+  #   ports:
+  #     - "50052:50052"
+  #   networks:
+  #     - rag-network
 
-  volumes:
-    mongo_data:
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    volumes:
+      - data:/app/data
+    environment:
+      - APP_DATA=/app/data
+    networks:
+      - rag-network
+    restart: "no"
+  
+  search:
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile
+    ports:
+      - "50051:50051"
+    volumes:
+      - data:/app/data
+    environment:
+      - APP_DATA=/app/data
+    networks:
+      - rag-network
+    depends_on:
+      ingestion:
+        condition: service_completed_successfully
+  
+  # mongodb:
+  #   image: mongo:latest
+  #   ports: ["27017:27017"]
+volumes: 
+  data:
+
+  # redis:
+  #   image: redis/redis-stack:latest # Includes Vector Search capabilities
+  #   ports: ["6379:6379", "8001:8001"] 

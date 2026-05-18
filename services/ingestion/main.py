@@ -40,7 +40,8 @@ def ingest_docs():
     
     documents = SimpleDirectoryReader('./data/raw').load_data()
 
-    db = chromadb.PersistentClient(path="./chromadb")
+    chroma_path = os.getenv("APP_DATA", "./chromadb")
+    db = chromadb.PersistentClient(path=chroma_path)
     chroma_collection = db.get_or_create_collection("arch-wiki")
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
@@ -57,6 +58,8 @@ def ingest_docs():
 if __name__ == "__main__":
     # Test with a few essential pages
     pages = ["Installation_guide", "Hyprland", "Arch_User_Repository"]
+    if not os.path.exists("data/raw"):
+        os.makedirs("data/raw")
     for page in pages:
         scrape_arch_wiki(page)
     ingest_docs()
